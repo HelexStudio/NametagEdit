@@ -16,14 +16,17 @@ public class HookLibsDisguise implements Listener {
     @EventHandler
     public void onDisguiseEvent(final DisguiseEvent event) {
         if (event.getEntity() instanceof Player) {
-            plugin.getHandler().getNametagManager().reset(event.getEntity().getName());
+            Player player = (Player) event.getEntity();
+            // Reset the player's nametag using NametagManager
+            plugin.getHandler().getNametagManager().reset(player.getName());
+
+            // Re-apply the nametag after a short delay
             new BukkitRunnable() {
                 @Override
                 public void run() {
-                    plugin.getHandler().applyTagToPlayer((Player) event.getEntity(), false);
+                    plugin.getHandler().applyTagToPlayer(player, false);
                 }
             }.runTaskLater(plugin, 3);
         }
     }
-
 }

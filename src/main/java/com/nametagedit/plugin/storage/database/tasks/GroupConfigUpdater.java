@@ -9,6 +9,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
+/**
+ * Updates a config setting in the nametagedit_config table.
+ */
 @AllArgsConstructor
 public class GroupConfigUpdater extends BukkitRunnable {
 
@@ -18,17 +21,15 @@ public class GroupConfigUpdater extends BukkitRunnable {
 
     @Override
     public void run() {
-        try (Connection connection = hikari.getConnection()) {
-            final String QUERY = "INSERT INTO " + DatabaseConfig.TABLE_GROUPS + " VALUES(?, ?) ON DUPLICATE KEY UPDATE `value`=?";
-            PreparedStatement update = connection.prepareStatement(QUERY);
+        final String QUERY = "INSERT INTO " + DatabaseConfig.TABLE_CONFIG + " (`setting`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value`=?";
+        try (Connection connection = hikari.getConnection();
+             PreparedStatement update = connection.prepareStatement(QUERY)) {
             update.setString(1, setting);
             update.setString(2, value);
             update.setString(3, value);
-            update.execute();
-            update.close();
+            update.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
-
 }

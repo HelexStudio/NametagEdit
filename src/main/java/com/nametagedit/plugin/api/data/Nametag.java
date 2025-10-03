@@ -1,11 +1,14 @@
 package com.nametagedit.plugin.api.data;
 
 import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Getter
-@Setter
+/**
+ * Simple POJO for a player's nametag (prefix & suffix).
+ */
+@Data
+@NoArgsConstructor
 @AllArgsConstructor
 public class Nametag {
     private String prefix;

@@ -18,14 +18,17 @@ import com.zaxxer.hikari.HikariDataSource;
 
 import lombok.AllArgsConstructor;
 
+/**
+ * Asynchronously loads player data from the database and applies the nametag.
+ */
 @AllArgsConstructor
 public class PlayerLoader extends BukkitRunnable {
 
-    private UUID uuid;
-    private Plugin plugin;
-    private NametagHandler handler;
-    private HikariDataSource hikari;
-    private boolean loggedIn;
+    private final UUID uuid;
+    private final Plugin plugin;
+    private final NametagHandler handler;
+    private final HikariDataSource hikari;
+    private final boolean loggedIn;
 
     @Override
     public void run() {
@@ -40,15 +43,14 @@ public class PlayerLoader extends BukkitRunnable {
             try (PreparedStatement select = connection.prepareStatement(QUERY)) {
                 select.setString(1, uuid.toString());
 
-                ResultSet resultSet = select.executeQuery();
-                if (resultSet.next()) {
-                    tempPrefix = resultSet.getString("prefix");
-                    tempSuffix = resultSet.getString("suffix");
-                    priority = resultSet.getInt("priority");
-                    found = true;
+                try (ResultSet resultSet = select.executeQuery()) {
+                    if (resultSet.next()) {
+                        tempPrefix = resultSet.getString("prefix");
+                        tempSuffix = resultSet.getString("suffix");
+                        priority = resultSet.getInt("priority");
+                        found = true;
+                    }
                 }
-
-                resultSet.close();
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -56,8 +58,8 @@ public class PlayerLoader extends BukkitRunnable {
             final String prefix = tempPrefix == null ? "" : tempPrefix;
             final String suffix = tempSuffix == null ? "" : tempSuffix;
             final boolean finalFound = found;
-
             final int finalPriority = priority;
+
             new BukkitRunnable() {
                 @Override
                 public void run() {
@@ -71,14 +73,13 @@ public class PlayerLoader extends BukkitRunnable {
                             } else {
                                 data.setPrefix(prefix);
                                 data.setSuffix(suffix);
+                                data.setSortPriority(finalPriority);
                             }
                         }
-
                         handler.applyTagToPlayer(player, loggedIn);
                     }
                 }
             }.runTask(plugin);
         }
     }
-
 }

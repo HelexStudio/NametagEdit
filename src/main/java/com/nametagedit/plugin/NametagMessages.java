@@ -2,7 +2,6 @@ package com.nametagedit.plugin;
 
 import com.nametagedit.plugin.utils.Utils;
 import lombok.AllArgsConstructor;
-import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 
 @AllArgsConstructor
@@ -46,5 +45,4 @@ public enum NametagMessages {
     public void send(CommandSender sender, Object... object) {
         sender.sendMessage(String.format(toString(), object));
     }
-
 }

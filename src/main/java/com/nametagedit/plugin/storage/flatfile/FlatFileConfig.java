@@ -1,211 +1,189 @@
 package com.nametagedit.plugin.storage.flatfile;
 
-import com.nametagedit.plugin.NametagEdit;
 import com.nametagedit.plugin.NametagHandler;
 import com.nametagedit.plugin.api.data.GroupData;
 import com.nametagedit.plugin.api.data.PlayerData;
 import com.nametagedit.plugin.storage.AbstractConfig;
-import com.nametagedit.plugin.utils.UUIDFetcher;
-import com.nametagedit.plugin.utils.Utils;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.plugin.Plugin;
+import org.yaml.snakeyaml.DumperOptions;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 public class FlatFileConfig implements AbstractConfig {
 
-    private File groupsFile;
-    private File playersFile;
-
-    private YamlConfiguration groups;
-    private YamlConfiguration players;
-
-    private final NametagEdit plugin;
+    private final Plugin plugin;
     private final NametagHandler handler;
+    private File playersFile;
+    private YamlConfiguration playersConfig;
+    private File groupsFile;
+    private YamlConfiguration groupsConfig;
+    private final Yaml yaml;
 
-    public FlatFileConfig(NametagEdit plugin, NametagHandler handler) {
+    public FlatFileConfig(Plugin plugin, NametagHandler handler) {
         this.plugin = plugin;
         this.handler = handler;
+
+        DumperOptions options = new DumperOptions();
+        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+        options.setDefaultScalarStyle(DumperOptions.ScalarStyle.SINGLE_QUOTED);
+        options.setPrettyFlow(true);
+        this.yaml = new Yaml(options);
+
+        loadFiles();
+    }
+
+    private void saveConfiguration(YamlConfiguration config, File file) {
+        try (Writer writer = new FileWriter(file)) {
+            yaml.dump(config.getValues(false), writer);
+        } catch (IOException e) {
+            plugin.getLogger().severe("Could not save " + file.getName() + ": " + e.getMessage());
+        }
+    }
+
+    private void loadFiles() {
+        playersFile = new File(plugin.getDataFolder(), "players.yml");
+        if (!playersFile.exists()) {
+            plugin.saveResource("players.yml", false);
+        }
+        playersConfig = YamlConfiguration.loadConfiguration(playersFile);
+
+        groupsFile = new File(plugin.getDataFolder(), "groups.yml");
+        if (!groupsFile.exists()) {
+            plugin.saveResource("groups.yml", false);
+        }
+        groupsConfig = YamlConfiguration.loadConfiguration(groupsFile);
     }
 
     @Override
     public void load() {
-        groupsFile = new File(plugin.getDataFolder(), "groups.yml");
-        groups = Utils.getConfig(groupsFile, "groups.yml", plugin);
-        playersFile = new File(plugin.getDataFolder(), "players.yml");
-        players = Utils.getConfig(playersFile, "players.yml", plugin);
-        loadGroups();
-        loadPlayers();
-
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                handler.applyTags();
+        loadFiles();
+        List<GroupData> groups = new ArrayList<>();
+        if (groupsConfig.isConfigurationSection("Groups")) {
+            for (String groupName : groupsConfig.getConfigurationSection("Groups").getKeys(false)) {
+                String path = "Groups." + groupName;
+                GroupData group = new GroupData();
+                group.setGroupName(groupName);
+                group.setPrefix(groupsConfig.getString(path + ".Prefix", ""));
+                group.setSuffix(groupsConfig.getString(path + ".Suffix", ""));
+                group.setPermission(groupsConfig.getString(path + ".Permission", "nte." + groupName));
+                group.setSortPriority(groupsConfig.getInt(path + ".SortPriority", 99));
+                groups.add(group);
             }
-        }.runTask(plugin);
+        }
+        handler.assignGroupData(groups);
+
+        if (playersConfig.isConfigurationSection("Players")) {
+            for (String uuid : playersConfig.getConfigurationSection("Players").getKeys(false)) {
+                String path = "Players." + uuid;
+                String name = playersConfig.getString(path + ".Name", "");
+                String prefix = playersConfig.getString(path + ".Prefix", "");
+                String suffix = playersConfig.getString(path + ".Suffix", "");
+                int priority = playersConfig.getInt(path + ".SortPriority", 99);
+                try {
+                    PlayerData data = new PlayerData(name, UUID.fromString(uuid), prefix, suffix, priority);
+                    handler.storePlayerData(data.getUuid(), data);
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
     }
 
     @Override
     public void reload() {
         handler.clearMemoryData();
-
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                load();
-            }
-        }.runTaskAsynchronously(plugin);
+        load();
+        handler.applyTags();
     }
 
     @Override
-    public void shutdown() {
-        // NOTE: Nothing to do
+    public void savePlayer(String playerName, String prefix, String suffix) {
+        Player player = Bukkit.getPlayerExact(playerName);
+        if (player == null) return;
+        String uuid = player.getUniqueId().toString();
+        String path = "Players." + uuid;
+
+        playersConfig.set(path + ".Name", playerName);
+        if (prefix != null) playersConfig.set(path + ".Prefix", prefix);
+        if (suffix != null) playersConfig.set(path + ".Suffix", suffix);
+
+        saveConfiguration(playersConfig, playersFile);
     }
 
     @Override
-    public void load(Player player, boolean loggedIn) {
-        loadPlayerTag(player);
-        plugin.getHandler().applyTagToPlayer(player, loggedIn);
+    public void clearPlayer(String playerName) {
+        Player player = Bukkit.getPlayerExact(playerName);
+        if (player == null) return;
+        String uuid = player.getUniqueId().toString();
+        playersConfig.set("Players." + uuid, null);
+        saveConfiguration(playersConfig, playersFile);
     }
 
     @Override
-    public void save(PlayerData... data) {
-        for (PlayerData playerData : data) {
-            UUID uuid = playerData.getUuid();
-            String name = playerData.getName();
-            players.set("Players." + uuid + ".Name", name);
-            players.set("Players." + uuid + ".Prefix", Utils.deformat(playerData.getPrefix()));
-            players.set("Players." + uuid + ".Suffix", Utils.deformat(playerData.getSuffix()));
-            players.set("Players." + uuid + ".SortPriority", playerData.getSortPriority());
+    public void save(GroupData... groupData) {
+        for (GroupData group : groupData) {
+            String path = "Groups." + group.getGroupName();
+            groupsConfig.set(path + ".Prefix", group.getPrefix());
+            groupsConfig.set(path + ".Suffix", group.getSuffix());
+            groupsConfig.set(path + ".Permission", group.getPermission());
+            groupsConfig.set(path + ".SortPriority", group.getSortPriority());
         }
-
-        save(players, playersFile);
+        saveConfiguration(groupsConfig, groupsFile);
     }
 
     @Override
-    public void save(final GroupData... data) {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                for (GroupData groupData : data) {
-                    storeGroup(groupData);
-                }
-
-                save(groups, groupsFile);
-            }
-        }.runTaskAsynchronously(plugin);
-    }
-
-    @Override
-    public void savePriority(boolean playerTag, String key, final int priority) {
+    public void savePriority(boolean playerTag, String key, int priority) {
         if (playerTag) {
-            final Player target = Bukkit.getPlayerExact(key);
-            if (target != null) {
-                if (players.contains("Players." + target.getUniqueId().toString())) {
-                    players.set("Players." + target.getUniqueId().toString(), priority);
-                    save(players, playersFile);
-                }
-                return;
-            }
-
-            UUIDFetcher.lookupUUID(key, plugin, new UUIDFetcher.UUIDLookup() {
-                @Override
-                public void response(UUID uuid) {
-                    if (players.contains("Players." + uuid.toString())) {
-                        players.set("Players." + uuid, priority);
-                        save(players, playersFile);
-                    }
-                }
-            });
+            Player player = Bukkit.getPlayerExact(key);
+            if (player == null) return;
+            String uuid = player.getUniqueId().toString();
+            playersConfig.set("Players." + uuid + ".SortPriority", priority);
+            saveConfiguration(playersConfig, playersFile);
+        } else {
+            groupsConfig.set("Groups." + key + ".SortPriority", priority);
+            saveConfiguration(groupsConfig, groupsFile);
         }
     }
 
     @Override
     public void delete(GroupData groupData) {
-        groups.set("Groups." + groupData.getGroupName(), null);
-        save(groups, groupsFile);
+        groupsConfig.set("Groups." + groupData.getGroupName(), null);
+        saveConfiguration(groupsConfig, groupsFile);
     }
 
     @Override
-    public void add(GroupData groupData) {
-        // NOTE: Nothing to do
-    }
-
-    @Override
-    public void clear(UUID uuid, String targetName) {
-        handler.removePlayerData(uuid);
-        players.set("Players." + uuid.toString(), null);
-        save(players, playersFile);
+    public void addGroup(GroupData groupData) {
+        save(groupData);
     }
 
     @Override
     public void orderGroups(CommandSender commandSender, List<String> order) {
-        groups.set("Groups", null);
-        for (String set : order) {
-            GroupData groupData = handler.getGroupData(set);
-            if (groupData != null) {
-                storeGroup(groupData);
+        ConfigurationSection section = groupsConfig.getConfigurationSection("Groups");
+        if (section == null) {
+            commandSender.sendMessage("§cNo groups found in groups.yml!");
+            return;
+        }
+        int priority = 1;
+        for (String groupName : order) {
+            if (section.contains(groupName)) {
+                section.set(groupName + ".SortPriority", priority++);
             }
         }
-
-        for (GroupData groupData : handler.getGroupData()) {
-            if (!groups.contains("Groups." + groupData.getGroupName())) {
-                storeGroup(groupData);
-            }
-        }
-
-        save(groups, groupsFile);
+        saveConfiguration(groupsConfig, groupsFile);
     }
 
-    private void save(YamlConfiguration config, File file) {
-        try {
-            config.save(file);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void loadPlayerTag(Player player) {
-        PlayerData data = PlayerData.fromFile(player.getUniqueId().toString(), players);
-        if (data != null) {
-            data.setName(player.getName());
-            handler.storePlayerData(player.getUniqueId(), data);
-        }
-    }
-
-    private void loadPlayers() {
-        for (Player player : Utils.getOnline()) {
-            loadPlayerTag(player);
-        }
-    }
-
-    private void loadGroups() {
-        List<GroupData> groupData = new ArrayList<>();
-        for (String groupName : groups.getConfigurationSection("Groups").getKeys(false)) {
-            GroupData data = new GroupData();
-            data.setGroupName(groupName);
-            data.setPermission(groups.getString("Groups." + groupName + ".Permission", "nte.default"));
-            data.setPrefix(groups.getString("Groups." + groupName + ".Prefix", ""));
-            data.setSuffix(groups.getString("Groups." + groupName + ".Suffix", ""));
-            data.setSortPriority(groups.getInt("Groups." + groupName + ".SortPriority", -1));
-            groupData.add(data);
-        }
-
-        handler.assignGroupData(groupData);
-    }
-
-    private void storeGroup(GroupData groupData) {
-        groups.set("Groups." + groupData.getGroupName() + ".Permission", groupData.getPermission());
-        groups.set("Groups." + groupData.getGroupName() + ".Prefix", Utils.deformat(groupData.getPrefix()));
-        groups.set("Groups." + groupData.getGroupName() + ".Suffix", Utils.deformat(groupData.getSuffix()));
-        groups.set("Groups." + groupData.getGroupName() + ".SortPriority", groupData.getSortPriority());
-    }
-
+    @Override public void shutdown() {}
+    @Override public void load(Player player, boolean loggedIn) {}
+    @Override public void save(PlayerData... playerData) {}
+    @Override public void clear(UUID uuid, String targetName) {}
 }

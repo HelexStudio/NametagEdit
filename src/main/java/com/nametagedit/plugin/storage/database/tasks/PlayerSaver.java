@@ -11,6 +11,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
+/**
+ * Asynchronously saves or updates multiple players in the database.
+ * Uses batching and proper column assignment.
+ */
 @AllArgsConstructor
 public class PlayerSaver extends BukkitRunnable {
 
@@ -19,27 +23,28 @@ public class PlayerSaver extends BukkitRunnable {
 
     @Override
     public void run() {
-        try (Connection connection = hikari.getConnection()) {
-            final String QUERY = "INSERT INTO " + DatabaseConfig.TABLE_PLAYERS + " VALUES(?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE `prefix`=?, `suffix`=?, `priority`=?";
-            PreparedStatement insertOrUpdate = connection.prepareStatement(QUERY);
+        final String QUERY = "INSERT INTO " + DatabaseConfig.TABLE_PLAYERS +
+                " (`uuid`, `name`, `prefix`, `suffix`, `priority`) VALUES (?, ?, ?, ?, ?)" +
+                " ON DUPLICATE KEY UPDATE `prefix`=?, `suffix`=?, `priority`=?";
+        try (Connection connection = hikari.getConnection();
+             PreparedStatement insertOrUpdate = connection.prepareStatement(QUERY)) {
 
-            for (PlayerData playerData : this.playerData) {
-                insertOrUpdate.setString(1, playerData.getUuid().toString());
-                insertOrUpdate.setString(2, playerData.getName());
-                insertOrUpdate.setString(3, Utils.deformat(playerData.getPrefix()));
-                insertOrUpdate.setString(4, Utils.deformat(playerData.getSuffix()));
-                insertOrUpdate.setInt(5, -1);
-                insertOrUpdate.setString(6, Utils.deformat(playerData.getPrefix()));
-                insertOrUpdate.setString(7, Utils.deformat(playerData.getSuffix()));
-                insertOrUpdate.setInt(8, playerData.getSortPriority());
+            for (PlayerData player : this.playerData) {
+                insertOrUpdate.setString(1, player.getUuid().toString());
+                insertOrUpdate.setString(2, player.getName());
+                insertOrUpdate.setString(3, Utils.deformat(player.getPrefix()));
+                insertOrUpdate.setString(4, Utils.deformat(player.getSuffix()));
+                insertOrUpdate.setInt(5, player.getSortPriority());
+                // ON DUPLICATE KEY UPDATE values
+                insertOrUpdate.setString(6, Utils.deformat(player.getPrefix()));
+                insertOrUpdate.setString(7, Utils.deformat(player.getSuffix()));
+                insertOrUpdate.setInt(8, player.getSortPriority());
                 insertOrUpdate.addBatch();
             }
 
             insertOrUpdate.executeBatch();
-            insertOrUpdate.close();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
-
 }

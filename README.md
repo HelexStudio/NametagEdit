@@ -1,60 +1,77 @@
 # NametagEdit
 
 [![Dev Builds](https://img.shields.io/badge/Jenkins-Development%20Builds-lightgrey.svg)](https://ci.nametagedit.com/job/NametagEdit)
-[![Support](https://img.shields.io/badge/Minecraft-1.7--1.19-green.svg)](documentation/Support)
+[![Discord](https://img.shields.io/discord/893946808949850122?color=7289DA&label=Discord&logo=discord&logoColor=white)](https://discord.gg/fuC9vac3eB)
 [![Spigot](https://img.shields.io/badge/Spigot-Project%20Page-yellow.svg)](https://www.spigotmc.org/resources/nametagedit.3836/)
-[![JDK](https://img.shields.io/badge/JDK-1.8-blue.svg)](https://jdk.java.net/java-se-ri/8-MR3)
-[![NametagEditAPI](https://img.shields.io/badge/NTE-Developer%20API-ff69b4.svg)](documentation/Developers.creole)
+[![Support](https://img.shields.io/badge/Minecraft-1.8%20--%201.20+-green.svg)](https://www.spigotmc.org/resources/nametagedit.3836/)
+[![JDK](https://img.shields.io/badge/JDK-17+-blue.svg)](https://adoptium.net/)
 
-This plugin allows users to add up to 16 characters before and after their name. Individual tags can be created for players, or a group can be created that can be joined via permissions.
+NametagEdit is a powerful and efficient Bukkit/Spigot plugin that gives you full control over player nametags. Add unique prefixes and suffixes for individual players, or create permission-based group tags that update automatically.
 
-* Minecraft `1.7.x to 1.12.x` has a max 16-character limit.
-* Minecraft `1.13.x to 1.20.x` has a max 256-character limit.
-* Minecraft `1.16.x to 1.20.x` has `hex color` support.
+This project is actively maintained by **[bsmokovitz](https://github.com/bsmokovitz)** to provide a feature-rich and stable experience for modern Minecraft servers.
 
-NametagEdit has support for EssentialsGroupManager, PermissionsEx, zPermissions, LuckPerms and LibsDisguises. If a user changes groups or permissions, their tag is automatically updated.
+*   **Official Spigot Page:** [spigotmc.org](https://www.spigotmc.org/resources/nametagedit.3836/)
+*   **Development Builds:** [ci.nametagedit.com](https://ci.nametagedit.com/job/NametagEdit)
+*   **Support & Updates on Discord:** [discord.gg/fuC9vac3eB](https://discord.gg/fuC9vac3eB)
 
-* [Official Project Page](https://www.spigotmc.org/resources/nametagedit.3836/)
-* [Development Builds](https://ci.nametagedit.com/job/NametagEdit)
+---
 
-# Quick Links
-* [API & Developers](documentation/Developers.creole)
-* [Permissions](documentation/Permissions.creole)
-* [Commands](documentation/Commands.creole)
-* [Configuration](documentation/Configuration.creole)
-* [Common Issues](documentation/Support.creole)
+## Current Features
 
-# Features
-✔ Converters to and from MySQL and FlatFile
+This version has been rebuilt from the ground up to provide a stable and feature-rich experience on modern servers.
 
-✔ Efficient Flatfile support and MySQL connection pooling
+*   **Full In-Game Command Suite:** Manage players, groups, and plugin settings directly from the game.
+*   **Individual & Group Tags:** Set custom prefixes/suffixes for players or create permission-based tags for server ranks.
+*   **Dynamic Permission Updates:** Hooks directly into **LuckPerms** to update tags instantly when a player's permissions change.
+*   **Persistent Flatfile Storage:** All player and group data is saved in easy-to-manage `players.yml` and `groups.yml` files with a clean, quoted format.
+*   **Sortable Tab List:** Control the order of players in the tab list using a priority system for both players and groups.
+*   **PlaceholderAPI Support:** Use thousands of placeholders from other plugins directly in your prefixes and suffixes.
+*   **Hex Color Support:** Use custom hex colors (`&#RRGGBB`) in nametags on Minecraft 1.16 and newer.
 
-✔ PermissionsEX, zPermissions, GroupManager, LuckPerms (https://www.spigotmc.org/resources/luckperms-an-advanced-permissions-plugin.28140/) support
+---
 
-✔ Sortable Group/Player Tags in tab
+## Commands and Permissions
 
-✔ [MVdW Placeholder API](https://www.spigotmc.org/resources/mvdwplaceholderapi.11182/) Support
+NametagEdit uses a granular permission system to give you full control over its features.
 
-✔ [Clip Placeholder API](https://www.spigotmc.org/resources/placeholderapi.6245/) Support 
+| Command                                | Permission                    | Description                                       |
+| -------------------------------------- | ----------------------------- | ------------------------------------------------- |
+| `/ne help`                             | `nametagedit.use`             | Allows a player to see the command list.          |
+| `/ne reload`                           | `nametagedit.reload`          | Allows a user to reload the plugin's data.        |
+| `/ne debug`, `/ne longtags`            | `nametagedit.reload`          | Toggles administrative/debug features.            |
+| `/ne priority`                         | `nametagedit.priority`        | Allows a user to view SortPriority information.   |
+| `/ne player <player> ...` (self)       | `nametagedit.edit.self`       | Allows a player to edit their own prefix/suffix.  |
+| `/ne player <player> ...` (others)     | `nametagedit.edit.others`     | Allows a player to edit anyone's prefix/suffix.   |
+| `/ne clear <player>` (self)            | `nametagedit.clear.self`      | Allows a player to clear their own prefix/suffix. |
+| `/ne clear <player>` (others)          | `nametagedit.clear.others`    | Allows a player to clear anyone's prefix/suffix.  |
+| `/ne group ...`                        | `nametagedit.groups`          | Allows usage of all group subcommands.            |
 
-✔ [Guilds](https://www.spigotmc.org/resources/guilds.66176/) Support 
+---
 
-# Frequently Asked Questions
-#### Q: Will this allow me to change my skin and name?
-**A:** No. This plugin creates fake scoreboard teams with packets.
+## Frequently Asked Questions
 
-#### Q: My client crashes with the reason "Cannot remove from ID#". Why is this?
-**A:** Due to how scoreboards were implemented in Minecraft, a player cannot belong to two teams. Any two plugins that use packets or the Bukkit API which alter team prefixes/suffixes will have conflicts. There is currently no way around this.
+#### Q: My nametag is being cut short!
 
-#### Q: My nametag is cut short, even with LongTags enabled!
-**A:** LongTags is only able to disable a longer nametag in the tablist. The name above your head has a different limit (16 characters for prefix and suffix.) We are unable to change this, as this limit is imposed by Mojang.
+**A:** This is for compatibility with older Minecraft versions. Use the command `/ne longtags` to enable full-length nametags for modern servers (1.13+).
 
-#### Q: Can I sort nametags in the tab list?
-**A:** Yes. Read up on how to use it [here](documentation/Configuration.creole)
+#### Q: Will this allow me to change my skin or actual username?
 
-# TODO
+**A:** No. This plugin uses Minecraft's scoreboard system to display prefixes and suffixes. It does not change a player's actual username or skin.
 
-# Incompatible Plugins
-✖ Any plugin that creates NPCs that share the same username as players who have 'NametagEdit' nametags
+#### Q: My client crashes with a "Cannot remove from ID#" error. Why?
 
-✖ Any plugin that uses Team color sidebars without specifically supporting NametagEdit
+**A:** This is a conflict with another plugin that also modifies scoreboard teams (e.g., another nametag plugin, some team-based minigames). A player can only be on one scoreboard team at a time. You must choose one plugin to handle nametags.
+
+---
+
+## Upcoming Features (Roadmap)
+
+The following features are planned for future updates to enhance functionality and restore legacy support.
+
+*   **MySQL Database Support:** Implement a robust database storage option for large networks.
+*   **Storage Converters:** Add commands to seamlessly migrate data between flatfile and MySQL.
+*   **Expanded Plugin Hooks:**
+    *   **Permissions:** Add explicit support for PermissionsEx, zPermissions, and EssentialsGroupManager.
+    *   **Placeholders:** Restore support for MVdWPlaceholderAPI.
+    *   **Compatibility:** Restore hooks for LibsDisguises and Guilds.
+*   **API Enhancements:** Further develop the developer API for deeper integration possibilities.

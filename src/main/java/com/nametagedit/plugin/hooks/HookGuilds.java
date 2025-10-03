@@ -20,5 +20,4 @@ public class HookGuilds implements Listener {
             handler.applyTagToPlayer(player, false);
         }
     }
-
 }

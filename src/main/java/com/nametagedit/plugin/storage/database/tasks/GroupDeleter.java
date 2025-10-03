@@ -9,6 +9,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
+/**
+ * Asynchronously deletes a group from the database.
+ */
 @AllArgsConstructor
 public class GroupDeleter extends BukkitRunnable {
 
@@ -17,15 +20,13 @@ public class GroupDeleter extends BukkitRunnable {
 
     @Override
     public void run() {
-        try (Connection connection = hikari.getConnection()) {
-            final String QUERY = "DELETE FROM " + DatabaseConfig.TABLE_GROUPS + " WHERE `name`=?";
-            PreparedStatement delete = connection.prepareStatement(QUERY);
+        final String QUERY = "DELETE FROM " + DatabaseConfig.TABLE_GROUPS + " WHERE `name`=?";
+        try (Connection connection = hikari.getConnection();
+             PreparedStatement delete = connection.prepareStatement(QUERY)) {
             delete.setString(1, groupName);
-            delete.execute();
-            delete.close();
+            delete.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
-
 }

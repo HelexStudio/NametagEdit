@@ -12,6 +12,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+/**
+ * Handles creation and migration of NametagEdit database tables.
+ * Runs async, then triggers a DataDownloader to load fresh data.
+ */
 @AllArgsConstructor
 public class DatabaseUpdater extends BukkitRunnable {
 
@@ -30,86 +34,79 @@ public class DatabaseUpdater extends BukkitRunnable {
 
             while (currentVersion < CURRENT_DATABASE_VERSION) {
                 switch (currentVersion) {
-                    case 1:
-                        handleUpdate1(connection);
-                        break;
-                    case 2:
-                        handleUpdate2(connection);
-                        break;
-                    case 3:
-                        handleUpdate3(connection);
-                        break;
-                    case 4:
-                        handleUpdate4(connection);
-                        break;
+                    case 1: handleUpdate1(connection); break;
+                    case 2: handleUpdate2(connection); break;
+                    case 3: handleUpdate3(connection); break;
+                    case 4: handleUpdate4(connection); break;
                 }
-
                 currentVersion++;
             }
 
             setCurrentDatabaseVersion(connection, CURRENT_DATABASE_VERSION);
         } catch (SQLException e) {
-            e.printStackTrace();
+            handleError(e);
         } finally {
             new DataDownloader(handler, hikari).runTaskAsynchronously(plugin);
         }
     }
 
     private void createTablesIfNotExists(Connection connection) {
-        execute(connection, "CREATE TABLE IF NOT EXISTS " + DatabaseConfig.TABLE_CONFIG + " (`setting` varchar(16) NOT NULL, `value` varchar(200) NOT NULL, PRIMARY KEY (`setting`)) ENGINE=InnoDB DEFAULT CHARSET=utf8");
-        execute(connection, "CREATE TABLE IF NOT EXISTS " + DatabaseConfig.TABLE_GROUPS + " (`name` varchar(64) NOT NULL, `permission` varchar(64) DEFAULT NULL, `prefix` varchar(256) NOT NULL, `suffix` varchar(256) NOT NULL, `priority` int(11) NOT NULL, PRIMARY KEY (`name`)) ENGINE=InnoDB DEFAULT CHARSET=utf8");
-        execute(connection, "CREATE TABLE IF NOT EXISTS " + DatabaseConfig.TABLE_PLAYERS + " (`uuid` varchar(64) NOT NULL, `name` varchar(16) NOT NULL, `prefix` varchar(256) NOT NULL, `suffix` varchar(256) NOT NULL, `priority` int(11) NOT NULL, PRIMARY KEY (`uuid`)) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+        execute(connection, "CREATE TABLE IF NOT EXISTS " + DatabaseConfig.TABLE_CONFIG +
+                " (`setting` varchar(16) NOT NULL, `value` varchar(200) NOT NULL, PRIMARY KEY (`setting`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        execute(connection, "CREATE TABLE IF NOT EXISTS " + DatabaseConfig.TABLE_GROUPS +
+                " (`name` varchar(64) NOT NULL, `permission` varchar(64) DEFAULT NULL, `prefix` varchar(256) NOT NULL, `suffix` varchar(256) NOT NULL, `priority` int(11) NOT NULL, PRIMARY KEY (`name`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        execute(connection, "CREATE TABLE IF NOT EXISTS " + DatabaseConfig.TABLE_PLAYERS +
+                " (`uuid` varchar(64) NOT NULL, `name` varchar(16) NOT NULL, `prefix` varchar(256) NOT NULL, `suffix` varchar(256) NOT NULL, `priority` int(11) NOT NULL, PRIMARY KEY (`uuid`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
     private void handleUpdate1(Connection connection) {
-        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_PLAYERS + " ADD `priority` INT NOT NULL");
-        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_GROUPS + " ADD `priority` INT NOT NULL");
-        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_GROUPS + " MODIFY `permission` VARCHAR(64)");
+        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_PLAYERS + " ADD COLUMN `priority` INT NOT NULL DEFAULT 0");
+        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_GROUPS + " ADD COLUMN `priority` INT NOT NULL DEFAULT 0");
+        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_GROUPS + " MODIFY COLUMN `permission` VARCHAR(64)");
     }
 
     private void handleUpdate2(Connection connection) {
-        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_GROUPS + " CHANGE `prefix` `prefix` VARCHAR(64) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL;");
-        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_GROUPS + " CHANGE `suffix` `suffix` VARCHAR(64) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL;");
-        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_PLAYERS + " CHANGE `prefix` `prefix` VARCHAR(64) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL;");
-        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_PLAYERS + " CHANGE `suffix` `suffix` VARCHAR(64) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL;");
+        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_GROUPS + " MODIFY COLUMN `prefix` VARCHAR(64) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL");
+        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_GROUPS + " MODIFY COLUMN `suffix` VARCHAR(64) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL");
+        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_PLAYERS + " MODIFY COLUMN `prefix` VARCHAR(64) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL");
+        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_PLAYERS + " MODIFY COLUMN `suffix` VARCHAR(64) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL");
     }
 
     private void handleUpdate3(Connection connection) {
-        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_GROUPS + " CONVERT TO CHARACTER SET utf8;");
-        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_PLAYERS + " CONVERT TO CHARACTER SET utf8;");
-
-        // TODO: Queries for Issue #230.
+        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_GROUPS + " CONVERT TO CHARACTER SET utf8mb4");
+        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_PLAYERS + " CONVERT TO CHARACTER SET utf8mb4");
+        // TODO: Add more queries for Issue #230 if needed
     }
 
     private void handleUpdate4(Connection connection) {
-        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_GROUPS + " CHANGE `prefix` `prefix` VARCHAR(256);");
-        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_GROUPS + " CHANGE `suffix` `suffix` VARCHAR(256);");
-        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_PLAYERS + " CHANGE `prefix` `prefix` VARCHAR(256);");
-        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_PLAYERS + " CHANGE `suffix` `suffix` VARCHAR(256);");
+        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_GROUPS + " MODIFY COLUMN `prefix` VARCHAR(256)");
+        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_GROUPS + " MODIFY COLUMN `suffix` VARCHAR(256)");
+        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_PLAYERS + " MODIFY COLUMN `prefix` VARCHAR(256)");
+        execute(connection, "ALTER TABLE " + DatabaseConfig.TABLE_PLAYERS + " MODIFY COLUMN `suffix` VARCHAR(256)");
     }
 
     private void setCurrentDatabaseVersion(Connection connection, int currentVersion) {
-        try (PreparedStatement select = connection.prepareStatement("INSERT INTO " + DatabaseConfig.TABLE_CONFIG +
-                " VALUES('db_version', ?) ON DUPLICATE KEY UPDATE `value`=?")) {
-            select.setInt(1, currentVersion);
-            select.setInt(2, currentVersion);
-            select.execute();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "INSERT INTO " + DatabaseConfig.TABLE_CONFIG + " (`setting`, `value`) VALUES ('db_version', ?) ON DUPLICATE KEY UPDATE `value`=?")) {
+            ps.setInt(1, currentVersion);
+            ps.setInt(2, currentVersion);
+            ps.executeUpdate();
         } catch (SQLException e) {
             handleError(e);
         }
     }
 
     private int getCurrentDatabaseVersion(Connection connection) {
-        try (PreparedStatement select = connection.prepareStatement("SELECT `value` FROM " + DatabaseConfig.TABLE_CONFIG + " WHERE `setting`='db_version'")) {
-            try (ResultSet resultSet = select.executeQuery()) {
-                if (resultSet.next()) {
-                    return resultSet.getInt("value");
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT `value` FROM " + DatabaseConfig.TABLE_CONFIG + " WHERE `setting`='db_version'")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("value");
                 }
             }
         } catch (SQLException e) {
             handleError(e);
         }
-
         return 1;
     }
 

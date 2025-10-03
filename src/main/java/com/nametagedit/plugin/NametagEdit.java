@@ -1,115 +1,61 @@
 package com.nametagedit.plugin;
 
-import com.nametagedit.plugin.api.INametagApi;
-import com.nametagedit.plugin.api.NametagAPI;
-import com.nametagedit.plugin.hooks.*;
-import com.nametagedit.plugin.invisibility.InvisibilityTask;
-import com.nametagedit.plugin.packets.PacketWrapper;
-import com.nametagedit.plugin.packets.VersionChecker;
-import lombok.Getter;
+import com.nametagedit.plugin.listener.NametagListener;
+import com.nametagedit.plugin.storage.AbstractConfig;
+import com.nametagedit.plugin.storage.flatfile.FlatFileConfig;
+import net.luckperms.api.LuckPerms;
 import org.bukkit.Bukkit;
-import org.bukkit.plugin.PluginManager;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.ArrayList;
-
-/**
- * TODO:
- * - Better uniform message format + more messages
- * - Code cleanup
- * - Add language support
- */
-@Getter
 public class NametagEdit extends JavaPlugin {
 
-    private static NametagEdit instance;
-
-    private static INametagApi api;
-
+    private AbstractConfig config;
     private NametagHandler handler;
-    private NametagManager manager;
-    private VersionChecker.BukkitVersion version;
-
-    public static INametagApi getApi() {
-        return api;
-    }
+    private LuckPerms luckPerms;
 
     @Override
     public void onEnable() {
-        testCompat();
-        if (!isEnabled()) return;
-
-        instance = this;
-
-        version = VersionChecker.getBukkitVersion();
-
-        getLogger().info("Successfully loaded using bukkit version: " + version.name());
-
-        manager = new NametagManager(this);
-        handler = new NametagHandler(this, manager);
-
-        PluginManager pluginManager = Bukkit.getPluginManager();
-
-        if (checkShouldRegister("zPermissions")) {
-            pluginManager.registerEvents(new HookZPermissions(handler), this);
-        } else if (checkShouldRegister("PermissionsEx")) {
-            pluginManager.registerEvents(new HookPermissionsEX(handler), this);
-        } else if (checkShouldRegister("GroupManager")) {
-            pluginManager.registerEvents(new HookGroupManager(handler), this);
-        } else if (checkShouldRegister("LuckPerms")) {
-            pluginManager.registerEvents(new HookLuckPerms(handler), this);
+        // Setup LuckPerms API
+        RegisteredServiceProvider<LuckPerms> provider = getServer().getServicesManager().getRegistration(LuckPerms.class);
+        if (provider != null) {
+            luckPerms = provider.getProvider();
+            getLogger().info("Successfully hooked into LuckPerms.");
         }
 
-        if (pluginManager.getPlugin("LibsDisguises") != null) {
-            pluginManager.registerEvents(new HookLibsDisguise(this), this);
-        }
-        if (pluginManager.getPlugin("Guilds") != null) {
-            pluginManager.registerEvents(new HookGuilds(handler), this);
-        }
+        // Initialize handler and storage
+        handler = new NametagHandler(this);
+        config = new FlatFileConfig(this, handler);
+        handler.setStorage(config);
+        config.load();
 
+        // Register commands and listeners
         getCommand("ne").setExecutor(new NametagCommand(handler));
+        getServer().getPluginManager().registerEvents(new NametagListener(handler), this);
 
-        if (api == null) {
-            api = new NametagAPI(handler, manager);
-        }
+        // Apply tags to already online players (for reloads)
+        handler.applyTags();
 
-        if (version.name().startsWith("v1_8_"))
-            new InvisibilityTask().runTaskTimerAsynchronously(this, 100L, 20L);
-    }
-
-    public static NametagEdit getInstance(){
-        return instance;
+        getLogger().info("NametagEdit has been enabled.");
     }
 
     @Override
     public void onDisable() {
-        manager.reset();
-        handler.getAbstractConfig().shutdown();
-    }
-
-    void debug(String message) {
-        if (handler != null && handler.debug()) {
-            getLogger().info("[DEBUG] " + message);
+        if (config != null) {
+            config.shutdown();
         }
+        getLogger().info("NametagEdit has been disabled.");
     }
 
-    private boolean checkShouldRegister(String plugin) {
-        if (Bukkit.getPluginManager().getPlugin(plugin) == null) return false;
-        getLogger().info("Found " + plugin + "! Hooking in.");
-        return true;
+    public NametagHandler getHandler() {
+        return handler;
     }
 
-    private void testCompat() {
-        PacketWrapper wrapper = new PacketWrapper("TEST", "&f", "", 0, new ArrayList<>(), true);
-        wrapper.send();
-        if (wrapper.error == null) return;
-        Bukkit.getPluginManager().disablePlugin(this);
-        getLogger().severe("\n------------------------------------------------------\n" +
-                "[WARNING] NametagEdit v" + getDescription().getVersion() + " Failed to load! [WARNING]" +
-                "\n------------------------------------------------------" +
-                "\nThis might be an issue with reflection. REPORT this:\n> " +
-                wrapper.error +
-                "\nThe plugin will now self destruct.\n------------------------------------------------------");
+    public AbstractConfig getStorage() {
+        return config;
     }
 
+    public LuckPerms getLuckPerms() {
+        return luckPerms;
+    }
 }

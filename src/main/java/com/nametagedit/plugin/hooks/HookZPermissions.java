@@ -15,5 +15,4 @@ public class HookZPermissions implements Listener {
     public void onZPermissionsRankChangeEvent(ZPermissionsPlayerUpdateEvent event) {
         handler.applyTagToPlayer(event.getPlayer(), false);
     }
-
 }

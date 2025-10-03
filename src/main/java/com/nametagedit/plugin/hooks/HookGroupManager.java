@@ -19,5 +19,4 @@ public class HookGroupManager implements Listener {
             handler.applyTagToPlayer(player, false);
         }
     }
-
 }

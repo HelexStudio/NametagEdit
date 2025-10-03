@@ -10,6 +10,9 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.UUID;
 
+/**
+ * Asynchronously deletes a player from the database by UUID.
+ */
 @AllArgsConstructor
 public class PlayerDeleter extends BukkitRunnable {
 
@@ -18,15 +21,13 @@ public class PlayerDeleter extends BukkitRunnable {
 
     @Override
     public void run() {
-        try (Connection connection = hikari.getConnection()) {
-            final String QUERY = "DELETE FROM " + DatabaseConfig.TABLE_PLAYERS + " WHERE `uuid`=?";
-            PreparedStatement delete = connection.prepareStatement(QUERY);
+        final String QUERY = "DELETE FROM " + DatabaseConfig.TABLE_PLAYERS + " WHERE `uuid`=?";
+        try (Connection connection = hikari.getConnection();
+             PreparedStatement delete = connection.prepareStatement(QUERY)) {
             delete.setString(1, uuid.toString());
-            delete.execute();
-            delete.close();
+            delete.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
-
 }

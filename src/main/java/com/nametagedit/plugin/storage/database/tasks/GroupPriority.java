@@ -9,6 +9,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
+/**
+ * Asynchronously updates a group's priority value.
+ */
 @AllArgsConstructor
 public class GroupPriority extends BukkitRunnable {
 
@@ -18,15 +21,14 @@ public class GroupPriority extends BukkitRunnable {
 
     @Override
     public void run() {
-        try (Connection connection = hikari.getConnection()) {
-            PreparedStatement preparedStatement = connection.prepareStatement("UPDATE " + DatabaseConfig.TABLE_GROUPS + " SET `priority`=? WHERE `name`=?");
+        final String QUERY = "UPDATE " + DatabaseConfig.TABLE_GROUPS + " SET `priority`=? WHERE `name`=?";
+        try (Connection connection = hikari.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(QUERY)) {
             preparedStatement.setInt(1, priority);
             preparedStatement.setString(2, group);
-            preparedStatement.execute();
-            preparedStatement.close();
+            preparedStatement.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
-
 }

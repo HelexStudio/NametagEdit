@@ -10,6 +10,9 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.UUID;
 
+/**
+ * Asynchronously updates a player's priority value in the database.
+ */
 @AllArgsConstructor
 public class PlayerPriority extends BukkitRunnable {
 
@@ -19,15 +22,14 @@ public class PlayerPriority extends BukkitRunnable {
 
     @Override
     public void run() {
-        try (Connection connection = hikari.getConnection()) {
-            PreparedStatement preparedStatement = connection.prepareStatement("UPDATE " + DatabaseConfig.TABLE_PLAYERS + " SET `priority`=? WHERE `uuid`=?");
+        final String QUERY = "UPDATE " + DatabaseConfig.TABLE_PLAYERS + " SET `priority`=? WHERE `uuid`=?";
+        try (Connection connection = hikari.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(QUERY)) {
             preparedStatement.setInt(1, priority);
             preparedStatement.setString(2, player.toString());
-            preparedStatement.execute();
-            preparedStatement.close();
+            preparedStatement.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
-
 }

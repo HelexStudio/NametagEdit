@@ -8,39 +8,20 @@ import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
 /**
- * This class represents an Event that is fired when a
- * nametag is changed.
+ * Event fired when a player's nametag is changed.
  */
 public class NametagEvent extends Event implements Cancellable {
 
     private static final HandlerList HANDLERS = new HandlerList();
 
-    private boolean cancelled;
+    @Getter @Setter private boolean cancelled;
 
-    @Getter
-    @Setter
-    @Deprecated
-    private String value;
-
-    @Getter
-    @Setter
-    private Nametag nametag;
-
-    @Getter
-    @Setter
-    private String player;
-
-    @Getter
-    @Setter
-    private ChangeType changeType;
-
-    @Getter
-    @Setter
-    private ChangeReason changeReason;
-
-    @Getter
-    @Setter
-    private StorageType storageType;
+    @Getter @Setter @Deprecated private String value;
+    @Getter @Setter private Nametag nametag;
+    @Getter @Setter private String player;
+    @Getter @Setter private ChangeType changeType;
+    @Getter @Setter private ChangeReason changeReason;
+    @Getter @Setter private StorageType storageType;
 
     public NametagEvent(String player, String value) {
         this(player, value, ChangeType.UNKNOWN);
@@ -76,26 +57,7 @@ public class NametagEvent extends Event implements Cancellable {
         return HANDLERS;
     }
 
-    @Override
-    public boolean isCancelled() {
-        return cancelled;
-    }
-
-    @Override
-    public void setCancelled(boolean cancelled) {
-        this.cancelled = cancelled;
-    }
-
-    public enum ChangeReason {
-        API, PLUGIN, UNKNOWN
-    }
-
-    public enum ChangeType {
-        PREFIX, SUFFIX, GROUP, CLEAR, PREFIX_AND_SUFFIX, RELOAD, UNKNOWN
-    }
-
-    public enum StorageType {
-        MEMORY, PERSISTENT
-    }
-
+    public enum ChangeReason { API, PLUGIN, UNKNOWN }
+    public enum ChangeType { PREFIX, SUFFIX, GROUP, CLEAR, PREFIX_AND_SUFFIX, RELOAD, UNKNOWN }
+    public enum StorageType { MEMORY, PERSISTENT }
 }

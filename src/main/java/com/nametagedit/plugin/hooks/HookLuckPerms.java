@@ -15,8 +15,11 @@ public class HookLuckPerms implements Listener {
 
     public HookLuckPerms(NametagHandler handler) {
         this.handler = handler;
-        EventBus eventBus = Bukkit.getServicesManager().load(LuckPerms.class).getEventBus();
-        eventBus.subscribe(handler.getPlugin(), UserDataRecalculateEvent.class, this::onUserDataRecalculateEvent);
+        LuckPerms luckPerms = Bukkit.getServicesManager().load(LuckPerms.class);
+        if (luckPerms != null) {
+            EventBus eventBus = luckPerms.getEventBus();
+            eventBus.subscribe(UserDataRecalculateEvent.class, this::onUserDataRecalculateEvent);
+        }
     }
 
     private void onUserDataRecalculateEvent(UserDataRecalculateEvent event) {
@@ -26,5 +29,4 @@ public class HookLuckPerms implements Listener {
             handler.applyTagToPlayer(player, false);
         }
     }
-
 }

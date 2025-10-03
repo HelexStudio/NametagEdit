@@ -25,7 +25,7 @@ public class PacketWrapper {
 
     static {
         try {
-            if (!PacketAccessor.isLegacyVersion()) {
+            if (!PacketAccessor.modernServer && !PacketAccessor.isLegacyVersion()) {
                 if (!PacketAccessor.isParamsVersion()) {
                     typeEnumChatFormat = (Class<? extends Enum>) Class.forName("net.minecraft.server." + PacketAccessor.VERSION + ".EnumChatFormat");
                 } else {
@@ -46,6 +46,12 @@ public class PacketWrapper {
             throw new IllegalArgumentException("Method must be join or leave for player constructor");
         }
         this.param = param;
+
+        if (PacketAccessor.modernServer) {
+            error = "NametagEdit: NMS packets are not supported on modern PaperMC!";
+            return;
+        }
+
         setupDefaults(name, param);
         setupMembers(members);
     }
@@ -53,6 +59,12 @@ public class PacketWrapper {
     @SuppressWarnings("unchecked")
     public PacketWrapper(String name, String prefix, String suffix, int param, Collection<?> players, boolean visible) {
         this.param = param;
+
+        if (PacketAccessor.modernServer) {
+            error = "NametagEdit: NMS packets are not supported on modern PaperMC!";
+            return;
+        }
+
         setupDefaults(name, param);
         if (param == 0 || param == 2) {
             try {
@@ -68,10 +80,7 @@ public class PacketWrapper {
                     if (!color.isEmpty()) {
                         colorCode = color.substring(color.length() - 1);
                         String chatColor = ChatColor.getByChar(colorCode).name();
-
-                        if (chatColor.equalsIgnoreCase("MAGIC"))
-                            chatColor = "OBFUSCATED";
-
+                        if (chatColor.equalsIgnoreCase("MAGIC")) chatColor = "OBFUSCATED";
                         colorEnum = Enum.valueOf(typeEnumChatFormat, chatColor);
                     }
 
@@ -94,14 +103,12 @@ public class PacketWrapper {
 
                 if (!PacketAccessor.isParamsVersion()) {
                     PacketAccessor.PACK_OPTION.set(packet, 1);
-
                     if (PacketAccessor.VISIBILITY != null) {
                         PacketAccessor.VISIBILITY.set(packet, visible ? "always" : "never");
                     }
                 } else {
                     // 1.17+
                     PacketAccessor.PACK_OPTION.set(packetParams, 1);
-
                     if (PacketAccessor.VISIBILITY != null) {
                         PacketAccessor.VISIBILITY.set(packetParams, visible ? "always" : "never");
                     }
@@ -118,6 +125,7 @@ public class PacketWrapper {
 
     @SuppressWarnings("unchecked")
     private void setupMembers(Collection<?> players) {
+        if (PacketAccessor.modernServer) return;
         try {
             players = players == null || players.isEmpty() ? new ArrayList<>() : players;
             ((Collection) PacketAccessor.MEMBERS.get(packet)).addAll(players);
@@ -127,12 +135,12 @@ public class PacketWrapper {
     }
 
     private void setupDefaults(String name, int param) {
+        if (PacketAccessor.modernServer) return;
         try {
             PacketAccessor.TEAM_NAME.set(packet, name);
             PacketAccessor.PARAM_INT.set(packet, param);
 
             if (PacketAccessor.isParamsVersion()) {
-                // 1.17+ These null values are not allowed, this initializes them.
                 PacketAccessor.MEMBERS.set(packet, new ArrayList<>());
                 PacketAccessor.PUSH.set(packetParams, "");
                 PacketAccessor.VISIBILITY.set(packetParams, "");
@@ -142,7 +150,6 @@ public class PacketWrapper {
                 if (!PacketAccessor.isParamsVersion()) {
                     PacketAccessor.PUSH.set(packet, "never");
                 } else {
-                    // 1.17+
                     PacketAccessor.PUSH.set(packetParams, "never");
                 }
             }
@@ -152,9 +159,9 @@ public class PacketWrapper {
     }
 
     private void constructPacket() {
+        if (PacketAccessor.modernServer) return;
         try {
             if (PacketAccessor.isParamsVersion()) {
-                // 1.17+
                 PacketAccessor.PARAMS.set(packet, param == 0 ? Optional.ofNullable(packetParams) : Optional.empty());
             }
         } catch (Exception e) {
@@ -163,13 +170,14 @@ public class PacketWrapper {
     }
 
     public void send() {
+        if (PacketAccessor.modernServer) return;
         constructPacket();
         PacketAccessor.sendPacket(Utils.getOnline(), packet);
     }
 
     public void send(Player player) {
+        if (PacketAccessor.modernServer) return;
         constructPacket();
         PacketAccessor.sendPacket(player, packet);
     }
-
 }

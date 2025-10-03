@@ -38,68 +38,75 @@ public class DataDownloader extends BukkitRunnable {
         final Map<UUID, PlayerData> playerData = new HashMap<>();
 
         try (Connection connection = hikari.getConnection()) {
-            ResultSet results = connection.prepareStatement("SELECT `name`, `prefix`, `suffix`, `permission`, `priority` FROM " + DatabaseConfig.TABLE_GROUPS).executeQuery();
-
-            while (results.next()) {
-                groupDataUnordered.add(new GroupData(
-                        results.getString("name"),
-                        results.getString("prefix"),
-                        results.getString("suffix"),
-                        results.getString("permission"),
-                        new Permission(results.getString("permission"), PermissionDefault.FALSE),
-                        results.getInt("priority")
-                ));
-            }
-
-            PreparedStatement select = connection.prepareStatement("SELECT `uuid`, `prefix`, `suffix`, `priority` FROM " + DatabaseConfig.TABLE_PLAYERS + " WHERE uuid=?");
-            for (UUID uuid : players) {
-                select.setString(1, uuid.toString());
-                results = select.executeQuery();
-                if (results.next()) {
-                    playerData.put(uuid, new PlayerData(
-                            "",
-                            uuid,
-                            Utils.format(results.getString("prefix"), true),
-                            Utils.format(results.getString("suffix"), true),
+            // Download groups
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "SELECT `name`, `prefix`, `suffix`, `permission`, `priority` FROM " + DatabaseConfig.TABLE_GROUPS);
+                 ResultSet results = ps.executeQuery()) {
+                while (results.next()) {
+                    groupDataUnordered.add(new GroupData(
+                            results.getString("name"),
+                            results.getString("prefix"),
+                            results.getString("suffix"),
+                            results.getString("permission"),
+                            new Permission(results.getString("permission"), PermissionDefault.FALSE),
                             results.getInt("priority")
                     ));
                 }
             }
 
-            results = connection.prepareStatement("SELECT `setting`,`value` FROM " + DatabaseConfig.TABLE_CONFIG).executeQuery();
-            while (results.next()) {
-                settings.put(results.getString("setting"), results.getString("value"));
+            // Download players
+            try (PreparedStatement select = connection.prepareStatement(
+                    "SELECT `uuid`, `prefix`, `suffix`, `priority` FROM " + DatabaseConfig.TABLE_PLAYERS + " WHERE uuid=?")) {
+                for (UUID uuid : players) {
+                    select.setString(1, uuid.toString());
+                    try (ResultSet results = select.executeQuery()) {
+                        if (results.next()) {
+                            playerData.put(uuid, new PlayerData(
+                                    "",
+                                    uuid,
+                                    Utils.format(results.getString("prefix")),
+                                    Utils.format(results.getString("suffix")),
+                                    results.getInt("priority")
+                            ));
+                        }
+                    }
+                }
             }
 
-            select.close();
-            results.close();
+            // Download config/settings
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "SELECT `setting`,`value` FROM " + DatabaseConfig.TABLE_CONFIG);
+                 ResultSet results = ps.executeQuery()) {
+                while (results.next()) {
+                    settings.put(results.getString("setting"), results.getString("value"));
+                }
+            }
+
         } catch (SQLException e) {
             e.printStackTrace();
         } finally {
-            // First order the groups before performing assignments
+            // Order groups if needed
             String orderSetting = settings.get("order");
             if (orderSetting != null) {
                 String[] order = orderSetting.split(" ");
-                // This will be the order we will use
-                List<GroupData> current = new ArrayList<>();
-                // Determine order for current loaded groups
+                List<GroupData> ordered = new ArrayList<>();
                 for (String group : order) {
                     Iterator<GroupData> itr = groupDataUnordered.iterator();
                     while (itr.hasNext()) {
                         GroupData groupData = itr.next();
                         if (groupData.getGroupName().equalsIgnoreCase(group)) {
-                            current.add(groupData);
+                            ordered.add(groupData);
                             itr.remove();
                             break;
                         }
                     }
                 }
-
-                current.addAll(groupDataUnordered); // Add remaining entries (bad order, wasn't specified)
-                groupDataUnordered = current; // Reassign the new group order
+                ordered.addAll(groupDataUnordered); // Remaining entries
+                groupDataUnordered = ordered;
             }
 
-            handler.assignData(groupDataUnordered, playerData); // Safely perform assignments
+            handler.assignData(groupDataUnordered, playerData);
+
             new BukkitRunnable() {
                 @Override
                 public void run() {
@@ -109,11 +116,9 @@ public class DataDownloader extends BukkitRunnable {
                             data.setName(player.getName());
                         }
                     }
-
                     handler.applyTags();
                 }
             }.runTask(handler.getPlugin());
         }
     }
-
 }

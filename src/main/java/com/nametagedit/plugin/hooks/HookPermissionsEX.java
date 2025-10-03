@@ -20,5 +20,4 @@ public class HookPermissionsEX implements Listener {
             handler.applyTagToPlayer(player, false);
         }
     }
-
 }
