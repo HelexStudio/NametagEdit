@@ -8,7 +8,7 @@
 
 NametagEdit is a powerful and efficient Bukkit/Spigot plugin that gives you full control over player nametags. Add unique prefixes and suffixes for individual players, or create permission-based group tags that update automatically.
 
-This project is actively maintained by **[bsmokovitz](https://github.com/bsmokovitz)** to provide a feature-rich and stable experience for modern Minecraft servers.
+This project is actively maintained by **[HelexStudio](https://github.com/HelexStudio)**, which is committed to providing ongoing support and ensuring compatibility with future Minecraft updates.
 
 *   **Official Spigot Page:** [spigotmc.org](https://www.spigotmc.org/resources/nametagedit.3836/)
 *   **Development Builds:** [ci.nametagedit.com](https://ci.nametagedit.com/job/NametagEdit)
